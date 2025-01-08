@@ -10,8 +10,22 @@ import {
 import { createTestDb } from '../../db/testDb';
 import { encodeHexLowerCase } from '@oslojs/encoding';
 import { sha256 } from '@oslojs/crypto/sha2';
-import type { MockContext } from './types';
 import type { ActionAPIContext } from 'astro:actions';
+import type { AstroCookies } from 'astro';
+
+// Define MockCookies as a type alias
+type MockCookies = {
+  set: ReturnType<typeof vi.fn>;
+  delete: ReturnType<typeof vi.fn>;
+  get: ReturnType<typeof vi.fn>;
+  has: ReturnType<typeof vi.fn>;
+  headers: () => Generator<string, void, unknown>;
+  merge: ReturnType<typeof vi.fn>;
+};
+
+interface MockContext extends Partial<ActionAPIContext> {
+  cookies?: AstroCookies & MockCookies;
+}
 
 describe('Session Management', () => {
   const INITIAL_TIME = new Date('3024-01-01').getTime();
@@ -98,6 +112,33 @@ describe('Session Management', () => {
       expect(validationResult).toEqual({ session: null, user: null });
     });
 
+    it('should extend session when close to expiry', async () => {
+      // Create a test user
+      const result = await testDb.client.execute({
+        sql: 'INSERT INTO users (email, password_hash) VALUES (?, ?)',
+        args: ['test@test.com', 'hash123'],
+      });
+      const userId = Number(result.lastInsertRowid);
+
+      // Create session that's close to expiry (14 days left)
+      const token = generateSessionToken();
+      const sessionId = encodeHexLowerCase(sha256(new TextEncoder().encode(token)));
+      const almostExpiredTime = Math.floor((INITIAL_TIME + (1000 * 60 * 60 * 24 * 14)) / 1000); // 14 days from now as timestamp
+      await testDb.client.execute({
+        sql: 'INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)',
+        args: [sessionId, userId, almostExpiredTime],
+      });
+
+      // Validate session - should be extended by 30 days
+      const validationResult = await validateSessionToken(token, testDb.db);
+      expect(validationResult.session).not.toBeNull();
+      expect(validationResult.user).not.toBeNull();
+      
+      // Check if expiration was extended
+      const expectedNewExpiry = new Date(INITIAL_TIME + (1000 * 60 * 60 * 24 * 30)); // 30 days from now
+      expect(validationResult.session?.expiresAt).toEqual(expectedNewExpiry);
+    });
+
     it('should invalidate session', async () => {
       // Create a test user
       const result = await testDb.client.execute({
@@ -127,8 +168,16 @@ describe('Session Management', () => {
           delete: vi.fn(),
           get: vi.fn(),
           has: vi.fn(),
-          headers: new Headers(),
-        },
+          headers: Object.assign(
+            function* () {
+              for (const [key, value] of new Headers()) {
+                yield `${key}: ${value}`;
+              }
+            },
+            new Headers()
+          ),
+          merge: vi.fn(), // Added merge method
+        } as unknown as AstroCookies & MockCookies, // Updated type assertion
       };
     });
 
