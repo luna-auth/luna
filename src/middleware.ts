@@ -4,7 +4,7 @@ import {
   deleteSessionCookie,
   setSessionCookie,
 } from "./lib/session";
-import type { App } from "./env";
+
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const token = context.cookies.get("session")?.value ?? null;

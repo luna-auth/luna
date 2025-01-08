@@ -14,8 +14,7 @@ import {
   invalidateSession,
 } from "../lib/session";
 import { hashPassword } from "../lib/hashPassword";
-
-import type { App } from "../env";
+import { loginRateLimiter, registerRateLimiter } from "../lib/rateLimiters";
 
 export const server = {
   login: defineAction({
@@ -24,7 +23,30 @@ export const server = {
       email: z.string().email(),
       password: z.string(),
     }),
-    handler: async ({ email, password }, context: ActionAPIContext) => {
+    handler: async (
+      { email, password }: { email: string; password: string },
+      context: ActionAPIContext,
+    ): Promise<{ success: boolean }> => {
+      // Rate limiting check
+      const clientIp = context.clientAddress ?? 'unknown';
+      const rateLimitKey = `login:${clientIp}:${email}`;
+      
+      // Check remaining attempts and warn if low
+      const remainingAttempts = loginRateLimiter.getRemainingAttempts(rateLimitKey);
+      if (remainingAttempts <= 2 && remainingAttempts > 0) {
+        console.warn(`Warning: Only ${remainingAttempts} login attempts remaining!`);
+      }
+
+      if (!loginRateLimiter.isAllowed(rateLimitKey)) {
+        const waitTime = loginRateLimiter.getRemainingTime(rateLimitKey);
+        const minutes = Math.ceil((waitTime ?? 0) / 1000 / 60);
+        
+        throw new ActionError({
+          code: "TOO_MANY_REQUESTS",
+          message: `Too many login attempts. Please try again in ${minutes} minutes.`,
+        });
+      }
+
       // Annotate 'context' parameter
       const [user] = await db
         .select()
@@ -32,6 +54,7 @@ export const server = {
         .where(eq(usersTable.email, email));
 
       if (!user) {
+        // Increment rate limit counter even on failed attempts
         throw new ActionError({
           code: "UNAUTHORIZED",
           message: "Invalid email or password",
@@ -41,11 +64,15 @@ export const server = {
       const passwordMatch = await verify(user.passwordHash, password);
 
       if (!passwordMatch) {
+        // Increment rate limit counter even on failed attempts
         throw new ActionError({
           code: "UNAUTHORIZED",
           message: "Invalid email or password",
         });
       }
+
+      // Reset rate limit on successful login
+      loginRateLimiter.reset(rateLimitKey);
 
       const token = generateSessionToken();
       const session = await createSession(token, user.id);
@@ -58,9 +85,11 @@ export const server = {
   }),
 
   logout: defineAction({
-    accept: 'form',
-    handler: async (_input, context: ActionAPIContext) => {
-      // Annotate 'context' parameter
+    accept: "form",
+    handler: async (
+      _input: unknown,
+      context: ActionAPIContext,
+    ): Promise<{ success: boolean }> => {
       const sessionId = (context.locals as App.Locals).session?.id;
       if (sessionId) {
         await invalidateSession(sessionId);
@@ -76,8 +105,30 @@ export const server = {
       email: z.string().email(),
       password: z.string().min(8),
     }),
-    handler: async ({ email, password }, context: ActionAPIContext) => {
-      // Annotate 'context' parameter
+    handler: async (
+      { email, password }: { email: string; password: string },
+      context: ActionAPIContext,
+    ): Promise<{ success: boolean }> => {
+      // Rate limiting check
+      const clientIp = context.clientAddress ?? 'unknown';
+      const rateLimitKey = `register:${clientIp}`;
+      
+      // Check remaining attempts and warn if low
+      const remainingAttempts = registerRateLimiter.getRemainingAttempts(rateLimitKey);
+      if (remainingAttempts <= 2 && remainingAttempts > 0) {
+        console.warn(`Warning: Only ${remainingAttempts} registration attempts remaining!`);
+      }
+
+      if (!registerRateLimiter.isAllowed(rateLimitKey)) {
+        const waitTime = registerRateLimiter.getRemainingTime(rateLimitKey);
+        const minutes = Math.ceil((waitTime ?? 0) / 1000 / 60);
+        
+        throw new ActionError({
+          code: "TOO_MANY_REQUESTS",
+          message: `Too many registration attempts. Please try again in ${minutes} minutes.`,
+        });
+      }
+
       const [existingUser] = await db
         .select()
         .from(usersTable)
@@ -108,6 +159,9 @@ export const server = {
           message: "User creation failed",
         });
       }
+
+      // Reset rate limit on successful registration
+      registerRateLimiter.reset(rateLimitKey);
 
       const token = generateSessionToken();
       const session = await createSession(token, user.id);

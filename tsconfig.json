@@ -9,6 +9,7 @@
       "@/*": ["src/*"]
     },
     "exactOptionalPropertyTypes": false,
-    "moduleResolution": "bundler"
+    "moduleResolution": "bundler",
+    "strict": true
   }
 }
