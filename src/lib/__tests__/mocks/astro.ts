@@ -1,19 +1,52 @@
-import { vi } from 'vitest';
+import type { ActionAPIContext } from 'astro:actions';
 
-// Mock for astro:schema
+// Mock dla astro:schema
 export const z = {
-  string: () => ({
-    email: () => z.string(),
-    min: (n: number) => z.string(),
+  object: (schema: any) => ({
+    ...schema,
+    parse: (data: any) => {
+      const result: any = {};
+      for (const [key, validator] of Object.entries(schema)) {
+        if (data instanceof FormData) {
+          result[key] = data.get(key);
+        } else {
+          result[key] = data[key];
+        }
+      }
+      return result;
+    },
   }),
-  object: (schema: any) => schema,
+  string: () => ({
+    email: () => ({
+      parse: (value: string) => value,
+    }),
+    min: (min: number) => ({
+      parse: (value: string) => value,
+    }),
+    parse: (value: string) => value,
+  }),
 };
 
-// Mock for astro:actions
-export const defineAction = vi.fn((config) => ({
-  ...config,
-  orThrow: async (formData: FormData) => {
-    const context = (formData as any).context;
-    return config.handler({}, context);
-  },
-})); 
+// Mock dla astro:actions
+export class ActionError extends Error {
+  constructor(public options: { code: string; message: string }) {
+    super(options.message);
+  }
+}
+
+export function defineAction<T, R>({ 
+  accept, 
+  input, 
+  handler 
+}: { 
+  accept: string; 
+  input?: any; 
+  handler: (data: T, context: ActionAPIContext) => Promise<R>; 
+}) {
+  return {
+    orThrow: async (data: any) => {
+      const parsedData = input ? input.parse(data) : data;
+      return handler(parsedData, data.context);
+    },
+  };
+} 
