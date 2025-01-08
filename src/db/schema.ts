@@ -1,19 +1,19 @@
-import { sqliteTable, int, text } from "drizzle-orm/sqlite-core";
-import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
+import { sqliteTable, int, text } from 'drizzle-orm/sqlite-core';
+import type { InferSelectModel, InferInsertModel } from 'drizzle-orm';
 
-export const usersTable = sqliteTable("users", {
-  id: int("id").primaryKey({ autoIncrement: true }),
-  email: text("email").notNull().unique(),
-  passwordHash: text("password_hash").notNull(),
+export const usersTable = sqliteTable('users', {
+  id: int('id').primaryKey({ autoIncrement: true }),
+  email: text('email').notNull().unique(),
+  passwordHash: text('password_hash').notNull(),
 });
 
-export const sessionsTable = sqliteTable("sessions", {
-  id: text("id").primaryKey(),
-  userId: int("user_id")
+export const sessionsTable = sqliteTable('sessions', {
+  id: text('id').primaryKey(),
+  userId: int('user_id')
     .notNull()
     .references(() => usersTable.id),
-  expiresAt: int("expires_at", {
-    mode: "timestamp",
+  expiresAt: int('expires_at', {
+    mode: 'timestamp',
   }).notNull(),
 });
 

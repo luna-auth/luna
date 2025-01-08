@@ -48,6 +48,7 @@ npm run dev
 ## Customization
 
 You can customize Luna by:
+
 - Modifying the database schema
 - Styling the components
 - Adding new auth flows

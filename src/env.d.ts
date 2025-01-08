@@ -1,5 +1,5 @@
-import type { Session } from "./lib/session";
-import type { User } from "./db/schema";
+import type { Session } from './lib/session';
+import type { User } from './db/schema';
 
 export {};
 

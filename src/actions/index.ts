@@ -1,36 +1,36 @@
-import { z } from "astro:schema";
-import { defineAction, ActionError } from "astro:actions";
-import type { ActionAPIContext } from "astro:actions";
+import { z } from 'astro:schema';
+import { defineAction, ActionError } from 'astro:actions';
+import type { ActionAPIContext } from 'astro:actions';
 
-import { db } from "../db";
-import { usersTable } from "../db/schema";
-import { eq } from "drizzle-orm";
-import { verify } from "@node-rs/argon2";
+import { db } from '../db';
+import { usersTable } from '../db/schema';
+import { eq } from 'drizzle-orm';
+import { verify } from '@node-rs/argon2';
 import {
   generateSessionToken,
   createSession,
   setSessionCookie,
   deleteSessionCookie,
   invalidateSession,
-} from "../lib/session";
-import { hashPassword } from "../lib/hashPassword";
-import { loginRateLimiter, registerRateLimiter } from "../lib/rateLimiters";
+} from '../lib/session';
+import { hashPassword } from '../lib/hashPassword';
+import { loginRateLimiter, registerRateLimiter } from '../lib/rateLimiters';
 
 export const server = {
   login: defineAction({
-    accept: "form",
+    accept: 'form',
     input: z.object({
       email: z.string().email(),
       password: z.string(),
     }),
     handler: async (
       { email, password }: { email: string; password: string },
-      context: ActionAPIContext,
+      context: ActionAPIContext
     ): Promise<{ success: boolean }> => {
       // Rate limiting check
       const clientIp = context.clientAddress ?? 'unknown';
       const rateLimitKey = `login:${clientIp}:${email}`;
-      
+
       // Check remaining attempts and warn if low
       const remainingAttempts = loginRateLimiter.getRemainingAttempts(rateLimitKey);
       if (remainingAttempts <= 2 && remainingAttempts > 0) {
@@ -40,24 +40,21 @@ export const server = {
       if (!loginRateLimiter.isAllowed(rateLimitKey)) {
         const waitTime = loginRateLimiter.getRemainingTime(rateLimitKey);
         const minutes = Math.ceil((waitTime ?? 0) / 1000 / 60);
-        
+
         throw new ActionError({
-          code: "TOO_MANY_REQUESTS",
+          code: 'TOO_MANY_REQUESTS',
           message: `Too many login attempts. Please try again in ${minutes} minutes.`,
         });
       }
 
       // Annotate 'context' parameter
-      const [user] = await db
-        .select()
-        .from(usersTable)
-        .where(eq(usersTable.email, email));
+      const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email));
 
       if (!user) {
         // Increment rate limit counter even on failed attempts
         throw new ActionError({
-          code: "UNAUTHORIZED",
-          message: "Invalid email or password",
+          code: 'UNAUTHORIZED',
+          message: 'Invalid email or password',
         });
       }
 
@@ -66,8 +63,8 @@ export const server = {
       if (!passwordMatch) {
         // Increment rate limit counter even on failed attempts
         throw new ActionError({
-          code: "UNAUTHORIZED",
-          message: "Invalid email or password",
+          code: 'UNAUTHORIZED',
+          message: 'Invalid email or password',
         });
       }
 
@@ -85,11 +82,8 @@ export const server = {
   }),
 
   logout: defineAction({
-    accept: "form",
-    handler: async (
-      _input: unknown,
-      context: ActionAPIContext,
-    ): Promise<{ success: boolean }> => {
+    accept: 'form',
+    handler: async (_input: unknown, context: ActionAPIContext): Promise<{ success: boolean }> => {
       const sessionId = (context.locals as App.Locals).session?.id;
       if (sessionId) {
         await invalidateSession(sessionId);
@@ -100,19 +94,19 @@ export const server = {
   }),
 
   register: defineAction({
-    accept: "form",
+    accept: 'form',
     input: z.object({
       email: z.string().email(),
       password: z.string().min(8),
     }),
     handler: async (
       { email, password }: { email: string; password: string },
-      context: ActionAPIContext,
+      context: ActionAPIContext
     ): Promise<{ success: boolean }> => {
       // Rate limiting check
       const clientIp = context.clientAddress ?? 'unknown';
       const rateLimitKey = `register:${clientIp}`;
-      
+
       // Check remaining attempts and warn if low
       const remainingAttempts = registerRateLimiter.getRemainingAttempts(rateLimitKey);
       if (remainingAttempts <= 2 && remainingAttempts > 0) {
@@ -122,22 +116,19 @@ export const server = {
       if (!registerRateLimiter.isAllowed(rateLimitKey)) {
         const waitTime = registerRateLimiter.getRemainingTime(rateLimitKey);
         const minutes = Math.ceil((waitTime ?? 0) / 1000 / 60);
-        
+
         throw new ActionError({
-          code: "TOO_MANY_REQUESTS",
+          code: 'TOO_MANY_REQUESTS',
           message: `Too many registration attempts. Please try again in ${minutes} minutes.`,
         });
       }
 
-      const [existingUser] = await db
-        .select()
-        .from(usersTable)
-        .where(eq(usersTable.email, email));
+      const [existingUser] = await db.select().from(usersTable).where(eq(usersTable.email, email));
 
       if (existingUser) {
         throw new ActionError({
-          code: "CONFLICT",
-          message: "Email already registered",
+          code: 'CONFLICT',
+          message: 'Email already registered',
         });
       }
 
@@ -155,8 +146,8 @@ export const server = {
 
       if (!user) {
         throw new ActionError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "User creation failed",
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'User creation failed',
         });
       }
 

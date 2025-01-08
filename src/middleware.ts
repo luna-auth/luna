@@ -1,13 +1,8 @@
-import { defineMiddleware } from "astro:middleware";
-import {
-  validateSessionToken,
-  deleteSessionCookie,
-  setSessionCookie,
-} from "./lib/session";
-
+import { defineMiddleware } from 'astro:middleware';
+import { validateSessionToken, deleteSessionCookie, setSessionCookie } from './lib/session';
 
 export const onRequest = defineMiddleware(async (context, next) => {
-  const token = context.cookies.get("session")?.value ?? null;
+  const token = context.cookies.get('session')?.value ?? null;
   const locals = context.locals as App.Locals;
 
   if (token === null) {

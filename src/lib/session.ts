@@ -1,11 +1,13 @@
 import { encodeBase32LowerCaseNoPadding, encodeHexLowerCase } from '@oslojs/encoding';
 import { sha256 } from '@oslojs/crypto/sha2';
-import { db } from '../db';
+import { db as defaultDb } from '../db';
 import type { Session, User } from '../db/schema';
 import { usersTable, sessionsTable } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import type { APIContext } from 'astro';
 import type { ActionAPIContext } from 'astro:actions';
+import type { LibSQLDatabase } from 'drizzle-orm/libsql';
+import * as schema from '../db/schema';
 
 export function generateSessionToken(): string {
   const bytes = new Uint8Array(20);
@@ -14,7 +16,12 @@ export function generateSessionToken(): string {
   return token;
 }
 
-export async function createSession(token: string, userId: number): Promise<Session> {
+export async function createSession(
+  token: string,
+  userId: number,
+  customDb: LibSQLDatabase<typeof schema> | null = null
+): Promise<Session> {
+  const db = customDb || defaultDb;
   const sessionId = encodeHexLowerCase(sha256(new TextEncoder().encode(token)));
   const session: Session = {
     id: sessionId,
@@ -25,7 +32,11 @@ export async function createSession(token: string, userId: number): Promise<Sess
   return session;
 }
 
-export async function validateSessionToken(token: string): Promise<SessionValidationResult> {
+export async function validateSessionToken(
+  token: string,
+  customDb: LibSQLDatabase<typeof schema> | null = null
+): Promise<SessionValidationResult> {
+  const db = customDb || defaultDb;
   const sessionId = encodeHexLowerCase(sha256(new TextEncoder().encode(token)));
   const result = await db
     .select({
@@ -35,7 +46,7 @@ export async function validateSessionToken(token: string): Promise<SessionValida
     .from(sessionsTable)
     .innerJoin(usersTable, eq(sessionsTable.userId, usersTable.id))
     .where(eq(sessionsTable.id, sessionId));
-  
+
   if (result.length === 0) {
     return { session: null, user: null };
   }
@@ -65,7 +76,11 @@ export async function validateSessionToken(token: string): Promise<SessionValida
   return { session, user };
 }
 
-export async function invalidateSession(sessionId: string): Promise<void> {
+export async function invalidateSession(
+  sessionId: string,
+  customDb: LibSQLDatabase<typeof schema> | null = null
+): Promise<void> {
+  const db = customDb || defaultDb;
   await db.delete(sessionsTable).where(eq(sessionsTable.id, sessionId));
 }
 
