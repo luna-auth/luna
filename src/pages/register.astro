@@ -1,19 +1,47 @@
 ---
-import { actions } from 'astro:actions';
+import { actions, isInputError } from 'astro:actions';
 import Layout from '../layouts/Layout.astro';
 import RegisterForm from '../components/RegisterForm.astro';
 
+/**
+ * If the user is already logged in, redirect away
+ */
 if (Astro.locals.user) {
   return Astro.redirect('/');
 }
 
+/**
+ * Retrieve the result from our 'auth.register' action
+ */
 const result = Astro.getActionResult(actions.auth.register);
+
+/**
+ * If registration was successful, redirect to homepage
+ */
 if (result?.data?.success) {
-  // Registration successful, redirect to homepage
   return Astro.redirect('/');
+}
+
+// Prepare error message to display if needed
+let generalError = '';
+if (result?.error) {
+  if (isInputError(result.error)) {
+    // Possibly handle each field error individually if you want
+    // For simplicity, a general message:
+    generalError = 'Invalid form data. Please correct errors and try again.';
+  } else {
+    // If not a validation error, it's likely an ActionError
+    // Could be "CONFLICT" if email is taken, or a DB error
+    generalError = result.error.message || 'Could not register. Please try again.';
+  }
 }
 ---
 
 <Layout title="Register">
+  {generalError && (
+    <div style="background: #fdd; padding: 1rem; margin-bottom: 1rem;">
+      <strong>Error:</strong> {generalError}
+    </div>
+  )}
   <RegisterForm />
 </Layout>

@@ -1,19 +1,56 @@
 ---
-import { actions } from 'astro:actions';
+import { isInputError, actions } from 'astro:actions';
 import Layout from '../layouts/Layout.astro';
 import LoginForm from '../components/LoginForm.astro';
 
+/** If user is already logged in, redirect away */
 if (Astro.locals.user) {
   return Astro.redirect('/');
 }
 
-const result = Astro.getActionResult(actions.auth.login);
-if (result?.data?.success) {
-  // Login successful, redirect to homepage
-  return Astro.redirect('/');
+let data = null;
+let error = null;
+
+/** If this is a POST request to /login, call our auth.login action here. */
+if (Astro.request.method === 'POST') {
+  const formData = await Astro.request.formData();
+
+  // Call the same "auth.login" action you had before:
+  const result = await Astro.callAction(actions.auth.login, formData);
+  data = result.data;
+  error = result.error;
+
+  // If successful, redirect to homepage
+  if (data?.success) {
+    return Astro.redirect('/');
+  }
+}
+
+/** We'll show a single error message if needed */
+let generalError = '';
+if (error) {
+  if (isInputError(error)) {
+    generalError = 'Invalid form data. Please correct errors and try again.';
+  } else {
+    // e.g. UNAUTHORIZED, TOO_MANY_REQUESTS, etc.
+    generalError = error.message || 'Unknown error. Please try again.';
+  }
 }
 ---
 
 <Layout title="Login">
-  <LoginForm />
+  {generalError && (
+    <div style="background: #fdd; padding: 1rem; margin-bottom: 1rem;">
+      <strong>Error:</strong> {generalError}
+    </div>
+  )}
+
+  <!-- Simpler form: POST to the same page -->
+  <form method="POST" action="/login">
+    <label>Email</label>
+    <input type="email" name="email" required />
+    <label>Password</label>
+    <input type="password" name="password" required />
+    <button>Log In</button>
+  </form>
 </Layout>

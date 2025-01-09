@@ -7,18 +7,32 @@ import { eq } from 'drizzle-orm';
 import type { APIContext } from 'astro';
 import type { ActionAPIContext } from 'astro:actions';
 
+/**
+ * SessionValidationResult is returned after checking if the token
+ * in the user's cookies matches a valid session in the DB.
+ */
 export interface SessionValidationResult {
   session: Session | null;
   user: User | null;
 }
 
+/**
+ * Throw this custom error if we detect an expired or invalid session.
+ * We'll catch it in our middleware to remove cookies or handle redirection.
+ */
 export class SessionValidationError extends Error {
-  constructor(message: string, public code: 'EXPIRED' | 'INVALID' | 'USER_NOT_FOUND') {
+  constructor(
+    message: string,
+    public code: 'EXPIRED' | 'INVALID' | 'USER_NOT_FOUND'
+  ) {
     super(message);
     this.name = 'SessionValidationError';
   }
 }
 
+/**
+ * Generate a 20-byte random token for sessions
+ */
 export function generateSessionToken(): string {
   const bytes = new Uint8Array(20);
   crypto.getRandomValues(bytes);
@@ -26,20 +40,32 @@ export function generateSessionToken(): string {
   return token;
 }
 
+/**
+ * Create a new session in the DB with hashed token ID
+ */
 export async function createSession(
   token: string,
   userId: number
 ): Promise<Session> {
-  const sessionId = encodeHexLowerCase(sha256(new TextEncoder().encode(token)));
-  const session: Session = {
-    id: sessionId,
-    userId,
-    expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30), // 30 days from now
-  };
-  await db.insert(sessionsTable).values(session);
-  return session;
+  try {
+    const sessionId = encodeHexLowerCase(sha256(new TextEncoder().encode(token)));
+    const session: Session = {
+      id: sessionId,
+      userId,
+      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30), // 30 days
+    };
+    await db.insert(sessionsTable).values(session);
+    return session;
+  } catch (error) {
+    // Network/DB error
+    throw new Error('Failed to create session. Please try again later.');
+  }
 }
 
+/**
+ * Validate session token by checking DB for user and session
+ * Throws SessionValidationError if expired or invalid
+ */
 export async function validateSessionToken(
   token: string
 ): Promise<SessionValidationResult> {
@@ -64,7 +90,6 @@ export async function validateSessionToken(
     }
 
     const { session, user } = row;
-
     if (Date.now() >= session.expiresAt.getTime()) {
       await db.delete(sessionsTable).where(eq(sessionsTable.id, session.id));
       throw new SessionValidationError('Session expired', 'EXPIRED');
@@ -73,16 +98,28 @@ export async function validateSessionToken(
     return { session, user };
   } catch (error) {
     if (error instanceof SessionValidationError) {
+      // Rethrow known session errors to the middleware
       throw error;
     }
+    // Any other error is unexpected (network issue, DB down, etc.)
     throw new SessionValidationError('Session validation failed', 'INVALID');
   }
 }
 
+/**
+ * Invalidate a session by removing it from the DB
+ */
 export async function invalidateSession(sessionId: string): Promise<void> {
-  await db.delete(sessionsTable).where(eq(sessionsTable.id, sessionId));
+  try {
+    await db.delete(sessionsTable).where(eq(sessionsTable.id, sessionId));
+  } catch {
+    // If DB is down, user simply won't have that session invalidated. Not critical.
+  }
 }
 
+/**
+ * Set a session cookie in the browser; used by login, register, and rolling sessions
+ */
 export function setSessionCookie(
   context: APIContext | ActionAPIContext,
   token: string,
@@ -97,12 +134,19 @@ export function setSessionCookie(
   });
 }
 
+/**
+ * Remove a session cookie by name
+ */
 export function deleteSessionCookie(context: APIContext | ActionAPIContext): void {
   context.cookies.delete('session', {
     path: '/',
   });
 }
 
+/**
+ * Helper: determine if session is expired or invalid. Not used directly but
+ * can be helpful for UI if you want to display a reason to the user.
+ */
 export function getSessionError(session: Session | null): 'EXPIRED' | 'INVALID' | null {
   if (!session) return 'INVALID';
   if (Date.now() >= session.expiresAt.getTime()) return 'EXPIRED';
