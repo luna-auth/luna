@@ -1,7 +1,9 @@
 import { setInterval } from 'node:timers';
 import { RateLimiter } from './rateLimit';
 
-export const loginRateLimiter = new RateLimiter(5, 15 * 60 * 1000);
+// More lenient rate limiting for development
+// 10 attempts within 1 minute
+export const loginRateLimiter = new RateLimiter(10, 60 * 1000);
 
 // Example: Periodic cleanup every hour
 setInterval(() => {

@@ -14,31 +14,44 @@ export const login = defineAction({
     password: z.string(),
   }),
   handler: async ({ email, password }, context) => {
-    const clientIp = context.clientAddress;
-    
-    if (!loginRateLimiter.isAllowed(clientIp)) {
+    try {
+      const clientIp = context.clientAddress;
+      
+      if (!loginRateLimiter.isAllowed(clientIp)) {
+        throw new ActionError({
+          code: 'TOO_MANY_REQUESTS',
+          message: 'Too many login attempts. Please wait a moment and try again.'
+        });
+      }
+
+      const [user] = await db
+        .select()
+        .from(usersTable)
+        .where(eq(usersTable.email, email));
+
+      if (!user || !(await verify(user.passwordHash, password))) {
+        throw new ActionError({
+          code: 'UNAUTHORIZED',
+          message: 'Incorrect email or password. Please try again.'
+        });
+      }
+
+      const token = generateSessionToken();
+      const session = await createSession(token, user.id);
+      setSessionCookie(context, token, session.expiresAt.getTime());
+
+      return { success: true };
+    } catch (error) {
+      console.error('Login error:', error);
+      
+      if (error instanceof ActionError) {
+        throw error;
+      }
+
       throw new ActionError({
-        code: 'TOO_MANY_REQUESTS',
-        message: 'Too many login attempts. Please try again later.'
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Something went wrong. Please try again.'
       });
     }
-
-    const [user] = await db
-      .select()
-      .from(usersTable)
-      .where(eq(usersTable.email, email));
-
-    if (!user || !(await verify(user.passwordHash, password))) {
-      throw new ActionError({
-        code: 'UNAUTHORIZED',
-        message: 'Invalid email or password'
-      });
-    }
-
-    const token = generateSessionToken();
-    const session = await createSession(token, user.id);
-    setSessionCookie(context, token, session.expiresAt.getTime());
-
-    return { success: true };
   }
 }); 

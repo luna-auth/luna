@@ -12,6 +12,10 @@ export const register = defineAction({
   input: z.object({
     email: z.string().email(),
     password: z.string().min(8),
+    confirm: z.string()
+  }).refine((data) => data.password === data.confirm, {
+    message: "Passwords don't match. Please try again!",
+    path: ["confirm"]
   }),
   handler: async ({ email, password }, context: ActionAPIContext) => {
     // Check if user already exists
@@ -20,7 +24,7 @@ export const register = defineAction({
     if (existingUser) {
       throw new ActionError({
         code: 'CONFLICT',
-        message: 'Email already registered',
+        message: 'This email is already registered. Please use a different one.',
       });
     }
 
@@ -41,7 +45,7 @@ export const register = defineAction({
     if (!user) {
       throw new ActionError({
         code: 'INTERNAL_SERVER_ERROR',
-        message: 'User creation failed',
+        message: 'Registration failed. Please try again.',
       });
     }
 
@@ -52,6 +56,9 @@ export const register = defineAction({
     // Set session cookie
     setSessionCookie(context, token, session.expiresAt.getTime());
 
-    return { success: true };
+    return { 
+      success: true,
+      redirect: '/'
+    };
   },
 }); 

@@ -1,47 +1,106 @@
 ---
+// Playground dla komponentów Luna Auth
 import { actions } from 'astro:actions';
-import Layout from '../layouts/Layout.astro';
+import LoginForm from '../components/auth/LoginForm.astro';
+import RegisterForm from '../components/auth/RegisterForm.astro';
 
-// Get current user and session from middleware-injected locals
-const user = Astro.locals.user;
-const session = Astro.locals.session;
-
-// Check if we have a result from the logout action
-// This is part of the POST/Redirect/GET pattern to avoid form resubmission dialogs
-const result = await Astro.getActionResult(actions.auth.logout);
-if (result?.data?.success) {
-  // If logout was successful, redirect to login page
-  // This prevents the "confirm form resubmission" dialog on page refresh
-  return Astro.redirect('/login');
+// Handle login action result
+let loginError = '';
+const loginResult = await Astro.getActionResult(actions.auth.login);
+if (loginResult?.error) {
+  loginError = loginResult.error.message || 'Login failed';
+} else if (loginResult?.data?.success) {
+  return Astro.redirect('/');
 }
+
+// Handle register action result
+let registerError = '';
+let registerSuccess = '';
+const registerResult = await Astro.getActionResult(actions.auth.register);
+if (registerResult?.error) {
+  registerError = registerResult.error.message || 'Registration failed';
+} else if (registerResult?.data?.success) {
+  return Astro.redirect('/');
+}
+
+// Handle logout action result
+const logoutResult = await Astro.getActionResult(actions.auth.logout);
+if (logoutResult?.data?.success) {
+  return Astro.redirect('/');
+}
+
+// Show success message if logged in
+const user = Astro.locals.user;
+
+// Common styles for components
+const styles = {
+  form: "space-y-6",
+  label: "block text-sm font-medium text-gray-700",
+  input: "w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500",
+  button: "w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500",
+  error: "p-3 text-sm bg-red-50 text-red-500 rounded-md",
+  success: "p-3 text-sm bg-green-50 text-green-600 rounded-md"
+};
 ---
 
-<Layout title="Home">
-  {
-    // Conditional rendering based on authentication state
-    user ? (
-      <>
-        <h1>Welcome, {user.email}!</h1>
-        {/* Only show session ID if we have an active session */}
-        {session && <p>Your session ID is: {session.id}</p>}
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Luna Auth Components</title>
+  
+  <!-- Tailwind CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <main class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold mb-8 text-gray-800">Luna Auth Components</h1>
 
-        {/* 
-          Logout form using HTML form submission (zero JS)
-          - method="POST": Ensures secure logout
-          - action={actions.auth.logout}: Links to our logout action
-        */}
-        <form method="POST" action={actions.auth.logout}>
-          <button type="submit">Logout</button>
+    {user && (
+      <div class="mb-8 p-4 bg-green-50 text-green-700 rounded-lg shadow-sm">
+        <span class="font-medium">Logged in as:</span> {user.email}
+        
+        <form method="post" action={actions.auth.logout} data-astro-reload class="mt-4">
+          <button type="submit" class="text-sm text-red-500 hover:text-red-700">
+            Logout
+          </button>
         </form>
-      </>
-    ) : (
-      <>
-        <h1>Welcome to our site!</h1>
-        <p>You are not logged in.</p>
-        <p>
-          <a href="/login">Login</a> or <a href="/register">Register</a>
-        </p>
-      </>
-    )
-  }
-</Layout>
+      </div>
+    )}
+
+    <div class="grid gap-8 md:grid-cols-2">
+      <!-- Login Form -->
+      <section class="space-y-4">
+        <h2 class="text-2xl font-semibold text-gray-800">Login Form</h2>
+        <div class="p-6 bg-white rounded-lg shadow-sm">
+          <LoginForm 
+            class={styles.form}
+            labelClass={styles.label}
+            inputClass={styles.input}
+            buttonClass={styles.button}
+            errorClass={styles.error}
+            error={loginError}
+          />
+        </div>
+      </section>
+
+      <!-- Register Form -->
+      <section class="space-y-4">
+        <h2 class="text-2xl font-semibold text-gray-800">Register Form</h2>
+        <div class="p-6 bg-white rounded-lg shadow-sm">
+          <RegisterForm 
+            class={styles.form}
+            labelClass={styles.label}
+            inputClass={styles.input}
+            buttonClass={styles.button}
+            errorClass={styles.error}
+            successClass={styles.success}
+            error={registerError}
+            success={registerSuccess}
+          />
+        </div>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

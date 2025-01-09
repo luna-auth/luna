@@ -11,6 +11,16 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // Grab all info about the inbound action request
   const { action, setActionResult, serializeActionResult } = getActionContext(context);
 
+  // If an action result was forwarded as a cookie, set the result
+  // to be accessible from `Astro.getActionResult()`
+  const payload = context.cookies.get('ACTION_PAYLOAD');
+  if (payload) {
+    const { actionName, actionResult } = payload.json();
+    setActionResult(actionName, actionResult);
+    context.cookies.delete('ACTION_PAYLOAD');
+    return next();
+  }
+
   // -- Rate-limiting for login attempts --
   if (action?.calledFrom === 'form' && action.name === 'auth.login') {
     const ipKey = context.clientAddress;
@@ -64,6 +74,23 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return next();
   }
 
-  // Continue to the next middleware or final route
-  return next();
+  // Handle the request
+  const response = await next();
+
+  // If this was an action, store the result in a cookie
+  if (action) {
+    const result = await action.result;
+    if (result) {
+      context.cookies.set('ACTION_PAYLOAD', {
+        actionName: action.name,
+        actionResult: await serializeActionResult(result)
+      }, {
+        httpOnly: true,
+        path: '/',
+        maxAge: 60 // 1 minute
+      });
+    }
+  }
+
+  return response;
 });

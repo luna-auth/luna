@@ -1,0 +1,72 @@
+---
+import { actions } from 'astro:actions';
+
+interface Props {
+  error?: string;
+  success?: string;
+  class?: string;
+  labelClass?: string;
+  inputClass?: string;
+  buttonClass?: string;
+  errorClass?: string;
+  successClass?: string;
+}
+
+const { 
+  error, 
+  success,
+  class: className,
+  labelClass,
+  inputClass,
+  buttonClass,
+  errorClass,
+  successClass
+} = Astro.props;
+---
+
+<form method="post" action={actions.auth.register} data-astro-reload class={className}>
+  {error && <p class={errorClass}>{error}</p>}
+  {success && <p class={successClass}>{success}</p>}
+
+  <div>
+    <label for="email" class={labelClass}>Email</label>
+    <input 
+      id="email"
+      name="email"
+      type="email"
+      required
+      autocomplete="email"
+      class={inputClass}
+    />
+  </div>
+
+  <div>
+    <label for="password" class={labelClass}>Password</label>
+    <input 
+      id="password"
+      name="password"
+      type="password"
+      required
+      autocomplete="new-password"
+      minlength="8"
+      class={inputClass}
+    />
+  </div>
+
+  <div>
+    <label for="confirm" class={labelClass}>Confirm Password</label>
+    <input 
+      id="confirm"
+      name="confirm"
+      type="password"
+      required
+      autocomplete="new-password"
+      minlength="8"
+      class={inputClass}
+    />
+  </div>
+
+  <button type="submit" class={buttonClass}>
+    Create Account
+  </button>
+</form> 

@@ -14,6 +14,9 @@ export const logout = defineAction({
       path: '/',
     });
 
-    return { success: true };
+    return { 
+      success: true,
+      redirect: '/'
+    };
   },
 }); 
