@@ -70,8 +70,16 @@ export async function createSession(
     };
     await db.insert(sessionsTable).values(session);
     return session;
-  } catch {
-    // Network/DB error
+  } catch (error) {
+    // Log the original error for debugging
+    console.error('Failed to create session:', error);
+    
+    // TODO: Send to error monitoring (e.g. Sentry)
+    // if (process.env.NODE_ENV === 'production') {
+    //   Sentry.captureException(error);
+    // }
+
+    // Return a generic message to the user
     throw new Error('Failed to create session. Please try again later.');
   }
 }
