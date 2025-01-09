@@ -1,8 +1,6 @@
 ---
 import { actions } from 'astro:actions';
 import Layout from '../layouts/Layout.astro';
-import Navbar from '../components/Navbar.astro';
-import Footer from '../components/Footer.astro';
 
 const user = Astro.locals.user;
 
@@ -14,8 +12,6 @@ if (result?.data?.success) {
 ---
 
 <Layout title="Home">
-  <Navbar />
-
   {
     user ? (
       <>
@@ -36,6 +32,4 @@ if (result?.data?.success) {
       </>
     )
   }
-
-  <Footer />
 </Layout>
