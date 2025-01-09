@@ -1,5 +1,5 @@
 import { defineMiddleware } from 'astro:middleware';
-import { validateSessionToken, deleteSessionCookie, setSessionCookie } from './lib/session';
+import { validateSessionToken } from './lib/session';
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const token = context.cookies.get('session')?.value ?? null;
@@ -13,10 +13,16 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   const { session, user } = await validateSessionToken(token);
   if (session === null) {
-    deleteSessionCookie(context);
+    context.cookies.delete('session', { path: '/' });
   } else {
     // Refresh the session cookie
-    setSessionCookie(context, token, session.expiresAt.getTime());
+    context.cookies.set('session', token, {
+      path: '/',
+      httpOnly: true,
+      secure: import.meta.env.PROD,
+      sameSite: 'lax',
+      expires: session.expiresAt,
+    });
   }
 
   locals.session = session;

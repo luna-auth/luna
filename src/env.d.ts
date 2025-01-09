@@ -1,3 +1,7 @@
+/// <reference types="astro/client" />
+/// <reference path="../.astro/db-types.d.ts" />
+/// <reference path="../.astro/types.d.ts" />
+
 import type { Session } from './lib/session';
 import type { User } from './db/schema';
 

@@ -1,73 +1,41 @@
 ---
-import Layout from '../layouts/Layout.astro';
-import RegisterForm from '../components/RegisterForm.astro';
-import LoginForm from '../components/LoginForm.astro';
 import { actions } from 'astro:actions';
+import Layout from '../layouts/Layout.astro';
+import Navbar from '../components/Navbar.astro';
+import Footer from '../components/Footer.astro';
 
-const registerResult = Astro.getActionResult(actions.register);
-if (registerResult && !registerResult.error) {
-  return Astro.redirect('/');
-}
+const user = Astro.locals.user;
 
-const loginResult = Astro.getActionResult(actions.login);
-if (loginResult && !loginResult.error) {
-  return Astro.redirect('/');
-}
-
-const logoutResult = Astro.getActionResult(actions.logout);
-if (logoutResult && !logoutResult.error) {
+const result = Astro.getActionResult(actions.auth.logout);
+if (result?.data?.success) {
+  // Logout successful, refresh the page
   return Astro.redirect('/');
 }
 ---
 
-<Layout>
-  {
-    Astro.locals.user ? (
-      <>
-        <div style="background: #f0f0f0; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-          <h2>Debug Panel - Zalogowany użytkownik 🚀</h2>
-          <pre style="background: #fff; padding: 10px; border-radius: 4px;">
-            User: {JSON.stringify(Astro.locals.user, null, 2)}
-            Session: {JSON.stringify(Astro.locals.session, null, 2)}
-          </pre>
-        </div>
+<Layout title="Home">
+  <Navbar />
 
-        <form method="POST" action={actions.logout}>
+  {
+    user ? (
+      <>
+        <h1>Welcome, {user.email}!</h1>
+        <p>Your session ID is: {Astro.locals.session.id}</p>
+
+        <form method="POST" action={actions.auth.logout}>
           <button type="submit">Logout</button>
         </form>
       </>
     ) : (
       <>
-        <div style="background: #f0f0f0; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-          <h2>Debug Panel - Niezalogowany 😴</h2>
-          <p>Kurwa, nikt nie jest zalogowany!</p>
-        </div>
-
-        <h2>Register</h2>
-        <RegisterForm />
-        <h2>Login</h2>
-        <LoginForm />
+        <h1>Welcome to our site!</h1>
+        <p>You are not logged in.</p>
+        <p>
+          <a href="/login">Login</a> or <a href="/register">Register</a>
+        </p>
       </>
     )
   }
+
+  <Footer />
 </Layout>
-
-<style>
-  pre {
-    white-space: pre-wrap;
-    word-wrap: break-word;
-  }
-
-  button {
-    background: #ff4444;
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 4px;
-    cursor: pointer;
-  }
-
-  button:hover {
-    background: #ff0000;
-  }
-</style>

@@ -1,0 +1,33 @@
+---
+import { actions } from 'astro:actions';
+const user = Astro.locals.user;
+---
+
+<nav>
+  <ul>
+    <li><a href="/">Home</a></li>
+    {
+      user ? (
+        <>
+          <li>
+            <a href="/profile">Profile</a>
+          </li>
+          <li>
+            <form method="POST" action={actions.auth.logout}>
+              <button type="submit">Logout</button>
+            </form>
+          </li>
+        </>
+      ) : (
+        <>
+          <li>
+            <a href="/login">Login</a>
+          </li>
+          <li>
+            <a href="/register">Register</a>
+          </li>
+        </>
+      )
+    }
+  </ul>
+</nav>

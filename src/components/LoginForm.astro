@@ -1,11 +1,11 @@
 ---
 import { actions, isInputError } from 'astro:actions';
 
-const result = Astro.getActionResult(actions.login);
+const result = Astro.getActionResult(actions.auth.login);
 const inputErrors = isInputError(result?.error) ? result.error.fields : {};
 ---
 
-<form method="POST" action={actions.login}>
+<form method="POST" action={actions.auth.login} transition:persist>
   <label>
     Email:
     <input type="email" name="email" required />
@@ -18,5 +18,4 @@ const inputErrors = isInputError(result?.error) ? result.error.fields : {};
   </label>
   <button type="submit">Login</button>
 </form>
-{result && result.error && <p style="color: red;">{result.error.message}</p>}
-{result && !result.error && <p>Login successful! You are now logged in.</p>}
+{result?.error && <p style="color: red;">{result.error.message}</p>}
