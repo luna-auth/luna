@@ -1,7 +1,6 @@
 ---
 import { isInputError, actions } from 'astro:actions';
 import Layout from '../layouts/Layout.astro';
-import LoginForm from '../components/LoginForm.astro';
 
 /** If user is already logged in, redirect away */
 if (Astro.locals.user) {
@@ -14,8 +13,6 @@ let error = null;
 /** If this is a POST request to /login, call our auth.login action here. */
 if (Astro.request.method === 'POST') {
   const formData = await Astro.request.formData();
-
-  // Call the same "auth.login" action you had before:
   const result = await Astro.callAction(actions.auth.login, formData);
   data = result.data;
   error = result.error;
@@ -26,31 +23,47 @@ if (Astro.request.method === 'POST') {
   }
 }
 
-/** We'll show a single error message if needed */
-let generalError = '';
+/** We'll show relevant error messages */
+let errorMessage = '';
 if (error) {
-  if (isInputError(error)) {
-    generalError = 'Invalid form data. Please correct errors and try again.';
+  if (error.code === 'TOO_MANY_REQUESTS') {
+    errorMessage = 'Too many login attempts. Please try again later.';
+  } else if (error.code === 'UNAUTHORIZED') {
+    errorMessage = 'Invalid email or password.';
+  } else if (isInputError(error)) {
+    errorMessage = 'Please check your email and password.';
   } else {
-    // e.g. UNAUTHORIZED, TOO_MANY_REQUESTS, etc.
-    generalError = error.message || 'Unknown error. Please try again.';
+    errorMessage = error.message || 'Login failed. Please try again.';
   }
 }
 ---
 
 <Layout title="Login">
-  {generalError && (
-    <div style="background: #fdd; padding: 1rem; margin-bottom: 1rem;">
-      <strong>Error:</strong> {generalError}
-    </div>
-  )}
+  <form method="POST" data-astro-reload>
+    {errorMessage && (
+      <p style="background: #fdd; padding: 0.5rem; color: red;">
+        <strong>Error:</strong> {errorMessage}
+      </p>
+    )}
 
-  <!-- Simpler form: POST to the same page -->
-  <form method="POST" action="/login">
-    <label>Email</label>
-    <input type="email" name="email" required />
-    <label>Password</label>
-    <input type="password" name="password" required />
-    <button>Log In</button>
+    <label for="email">Email</label>
+    <input
+      required
+      type="email"
+      name="email"
+      id="email"
+      placeholder="user@example.com"
+    />
+
+    <label for="password">Password</label>
+    <input
+      required
+      type="password"
+      name="password"
+      id="password"
+      placeholder="••••••••"
+    />
+
+    <button type="submit">Log In</button>
   </form>
 </Layout>

@@ -1,5 +1,5 @@
 import { defineMiddleware } from 'astro:middleware';
-import { getActionContext, isActionError } from 'astro:actions';
+import { getActionContext } from 'astro:actions';
 import { validateSessionToken, deleteSessionCookie, setSessionCookie, SessionValidationError } from './lib/auth/session';
 import { loginRateLimiter } from './lib/auth/rateLimiters';
 
@@ -11,25 +11,24 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // Grab all info about the inbound action request
   const { action, setActionResult, serializeActionResult } = getActionContext(context);
 
-  // -- Rate-limiting for login attempts. Keep this if you like. --
+  // -- Rate-limiting for login attempts --
   if (action?.calledFrom === 'form' && action.name === 'auth.login') {
     const ipKey = context.clientAddress;
     if (!loginRateLimiter.isAllowed(ipKey)) {
-      // Instead of setting the result, throw or remember to handle the limit in your action
-      // Or remove completely if you want to do it inside the action
+      const error = {
+        code: 'TOO_MANY_REQUESTS' as const,
+        message: 'Too many login attempts. Please try again later.',
+        type: 'error', 
+        status: 429,
+        name: 'TooManyLoginAttempts'
+      };
+      setActionResult(action.name, serializeActionResult({
+        data: undefined,
+        error
+      }));
+      return next();
     }
   }
-
-  // ❌ REMOVE or comment out the entire "if (action?.calledFrom === 'form')" block:
-  // if (action?.calledFrom === 'form') {
-  //   try {
-  //     const result = await action.handler();
-  //     setActionResult(action.name, serializeActionResult(result));
-  //     return next();
-  //   } catch (err) {
-  //     // ...
-  //   }
-  // }
 
   // --- Session validation for every request ---
   const sessionCookie = context.cookies.get('session')?.value ?? null;
