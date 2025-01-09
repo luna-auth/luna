@@ -1,17 +1,28 @@
-/// <reference types="astro/client" />
-/// <reference path="../.astro/db-types.d.ts" />
-/// <reference path="../.astro/types.d.ts" />
+/// <reference types=".astro/types.d.ts" />
 
-import type { Session } from './lib/session';
-import type { User } from './db/schema';
+interface ImportMetaEnv {
+  readonly DB_URL: string;
+  readonly SESSION_SECRET: string;
+}
 
-export {};
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
 
-declare global {
-  namespace App {
-    interface Locals {
-      session: Session | null;
-      user: User | null;
-    }
+interface Session {
+  id: string;
+  userId: number;
+  expiresAt: Date;
+}
+
+interface User {
+  id: number;
+  email: string;
+}
+
+declare namespace App {
+  interface Locals {
+    session: Session | null;
+    user: User | null;
   }
 }

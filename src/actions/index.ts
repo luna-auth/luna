@@ -1,5 +1,5 @@
-import { auth } from './auth';
+import * as auth from './auth';
 
 export const server = {
-  auth,
+  auth
 };

@@ -2,22 +2,34 @@
 import { actions } from 'astro:actions';
 import Layout from '../layouts/Layout.astro';
 
+// Get current user and session from middleware-injected locals
 const user = Astro.locals.user;
+const session = Astro.locals.session;
 
-const result = Astro.getActionResult(actions.auth.logout);
+// Check if we have a result from the logout action
+// This is part of the POST/Redirect/GET pattern to avoid form resubmission dialogs
+const result = await Astro.getActionResult(actions.auth.logout);
 if (result?.data?.success) {
-  // Logout successful, refresh the page
-  return Astro.redirect('/');
+  // If logout was successful, redirect to login page
+  // This prevents the "confirm form resubmission" dialog on page refresh
+  return Astro.redirect('/login');
 }
 ---
 
 <Layout title="Home">
   {
+    // Conditional rendering based on authentication state
     user ? (
       <>
         <h1>Welcome, {user.email}!</h1>
-        <p>Your session ID is: {Astro.locals.session.id}</p>
+        {/* Only show session ID if we have an active session */}
+        {session && <p>Your session ID is: {session.id}</p>}
 
+        {/* 
+          Logout form using HTML form submission (zero JS)
+          - method="POST": Ensures secure logout
+          - action={actions.auth.logout}: Links to our logout action
+        */}
         <form method="POST" action={actions.auth.logout}>
           <button type="submit">Logout</button>
         </form>
