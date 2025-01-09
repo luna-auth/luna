@@ -1,47 +1,79 @@
 ---
 import { actions, isInputError } from 'astro:actions';
 import Layout from '../layouts/Layout.astro';
-import RegisterForm from '../components/RegisterForm.astro';
 
-/**
- * If the user is already logged in, redirect away
- */
+/** If user is already logged in, redirect away */
 if (Astro.locals.user) {
   return Astro.redirect('/');
 }
 
-/**
- * Retrieve the result from our 'auth.register' action
- */
-const result = Astro.getActionResult(actions.auth.register);
+let data = null;
+let error = null;
+let inputErrors: Record<string, string[]> = {};
 
-/**
- * If registration was successful, redirect to homepage
- */
-if (result?.data?.success) {
-  return Astro.redirect('/');
+/** If this is a POST request, handle registration */
+if (Astro.request.method === 'POST') {
+  const formData = await Astro.request.formData();
+  const result = await Astro.callAction(actions.auth.register, formData);
+  data = result.data;
+  error = result.error;
+
+  // If successful, redirect to homepage
+  if (data?.success) {
+    return Astro.redirect('/');
+  }
+
+  // Get field-specific errors if any
+  if (isInputError(error)) {
+    inputErrors = error.fields;
+  }
 }
 
-// Prepare error message to display if needed
-let generalError = '';
-if (result?.error) {
-  if (isInputError(result.error)) {
-    // Possibly handle each field error individually if you want
-    // For simplicity, a general message:
-    generalError = 'Invalid form data. Please correct errors and try again.';
+/** Show relevant error messages */
+let errorMessage = '';
+if (error) {
+  if (error.code === 'CONFLICT') {
+    errorMessage = 'This email is already registered.';
+  } else if (isInputError(error)) {
+    errorMessage = 'Please check your input and try again.';
   } else {
-    // If not a validation error, it's likely an ActionError
-    // Could be "CONFLICT" if email is taken, or a DB error
-    generalError = result.error.message || 'Could not register. Please try again.';
+    errorMessage = error.message || 'Registration failed. Please try again.';
   }
 }
 ---
 
 <Layout title="Register">
-  {generalError && (
-    <div style="background: #fdd; padding: 1rem; margin-bottom: 1rem;">
-      <strong>Error:</strong> {generalError}
-    </div>
-  )}
-  <RegisterForm />
+  <form method="POST" data-astro-reload>
+    {errorMessage && (
+      <p style="background: #fdd; padding: 0.5rem; color: red;">
+        <strong>Error:</strong> {errorMessage}
+      </p>
+    )}
+
+    <label for="email">Email</label>
+    <input
+      required
+      type="email"
+      name="email"
+      id="email"
+      placeholder="user@example.com"
+    />
+    {inputErrors.email && (
+      <span style="color: red;">{inputErrors.email.join(', ')}</span>
+    )}
+
+    <label for="password">Password</label>
+    <input
+      required
+      type="password"
+      name="password"
+      id="password"
+      placeholder="••••••••"
+    />
+    {inputErrors.password && (
+      <span style="color: red;">{inputErrors.password.join(', ')}</span>
+    )}
+
+    <button type="submit">Register</button>
+  </form>
 </Layout>
