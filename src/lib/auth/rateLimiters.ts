@@ -1,4 +1,4 @@
-import { RateLimiter } from './rateLimit';
+import { RateLimiter } from '../../lib/auth/rateLimit';
 
 export const loginRateLimiter = new RateLimiter(5, 15 * 60 * 1000);
 

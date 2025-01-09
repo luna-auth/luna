@@ -54,13 +54,14 @@ export const onRequest = defineMiddleware(async (context, next) => {
     console.error('Session validation failed:', error);
     deleteSessionCookie(context);
 
-    if (error instanceof SessionValidationError) {
+    // Only redirect for non-action requests
+    if (!action && error instanceof SessionValidationError) {
       const redirectUrl =
         error.code === 'EXPIRED' ? '/login?error=session_expired' : '/login?error=invalid_session';
       return context.redirect(redirectUrl);
     }
 
-    return context.redirect('/login?error=auth_error');
+    return next();
   }
 
   // Continue to the next middleware or final route

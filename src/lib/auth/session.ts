@@ -4,8 +4,22 @@ import { db } from '../../db';
 import type { Session, User } from '../../db/schema';
 import { usersTable, sessionsTable } from '../../db/schema';
 import { eq } from 'drizzle-orm';
-import type { APIContext } from 'astro';
-import type { ActionAPIContext } from 'astro:actions';
+
+// Define a generic context interface that any framework can implement
+interface CookieContext {
+  cookies: {
+    set(name: string, value: string, options?: CookieOptions): void;
+    delete(name: string, options?: { path: string }): void;
+  };
+}
+
+interface CookieOptions {
+  path?: string;
+  httpOnly?: boolean;
+  secure?: boolean;
+  sameSite?: 'lax' | 'strict' | 'none';
+  expires?: Date;
+}
 
 /**
  * SessionValidationResult is returned after checking if the token
@@ -121,7 +135,7 @@ export async function invalidateSession(sessionId: string): Promise<void> {
  * Set a session cookie in the browser; used by login, register, and rolling sessions
  */
 export function setSessionCookie(
-  context: APIContext | ActionAPIContext,
+  context: CookieContext,
   token: string,
   expiresAt: number
 ): void {
@@ -137,7 +151,7 @@ export function setSessionCookie(
 /**
  * Remove a session cookie by name
  */
-export function deleteSessionCookie(context: APIContext | ActionAPIContext): void {
+export function deleteSessionCookie(context: CookieContext): void {
   context.cookies.delete('session', {
     path: '/',
   });
