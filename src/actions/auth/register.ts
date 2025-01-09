@@ -2,8 +2,8 @@ import { defineAction, ActionError } from 'astro:actions';
 import { z } from 'astro:schema';
 import { db } from '../../db';
 import { usersTable } from '../../db/schema';
-import { hashPassword } from '../../lib/hashPassword';
-import { generateSessionToken, createSession, setSessionCookie } from '../../lib/session';
+import { hashPassword } from '../../lib/auth/password';
+import { generateSessionToken, createSession, setSessionCookie } from '../../lib/auth/session';
 import type { ActionAPIContext } from 'astro:actions';
 import { eq } from 'drizzle-orm';
 

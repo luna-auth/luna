@@ -1,5 +1,5 @@
 import { defineAction } from 'astro:actions';
-import { invalidateSession } from '../../lib/session';
+import { invalidateSession } from '../../lib/auth/session';
 
 export const logout = defineAction({
   accept: 'form',

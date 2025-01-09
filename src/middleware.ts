@@ -1,7 +1,7 @@
 import { defineMiddleware } from 'astro:middleware';
 import { getActionContext } from 'astro:actions';
-import { validateSessionToken, deleteSessionCookie, setSessionCookie } from './lib/session';
-import { loginRateLimiter } from './lib/rateLimiters';
+import { validateSessionToken, deleteSessionCookie, setSessionCookie } from './lib/auth/session';
+import { loginRateLimiter } from './lib/auth/rateLimiters';
 
 // Example: typed locals, declared in src/env.d.ts
 // declare namespace App {

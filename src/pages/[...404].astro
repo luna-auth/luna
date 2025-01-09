@@ -1,6 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { getSessionError } from '../lib/session';
+import { getSessionError } from '../lib/auth/session';
 
 const sessionError = getSessionError(Astro.locals.session);
 ---

@@ -1,8 +1,8 @@
 import { encodeHexLowerCase } from '@oslojs/encoding';
 import { sha256 } from '@oslojs/crypto/sha2';
-import { db } from '../db';
-import type { Session, User } from '../db/schema';
-import { usersTable, sessionsTable } from '../db/schema';
+import { db } from '../../db';
+import type { Session, User } from '../../db/schema';
+import { usersTable, sessionsTable } from '../../db/schema';
 import { eq } from 'drizzle-orm';
 import type { APIContext } from 'astro';
 import type { ActionAPIContext } from 'astro:actions';

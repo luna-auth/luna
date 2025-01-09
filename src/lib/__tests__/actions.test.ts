@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { AstroCookies } from 'astro';
-import { hashPassword } from '../hashPassword';
-import { loginRateLimiter } from '../rateLimiters';
+import { hashPassword } from '../auth/password';
+import { loginRateLimiter } from '../auth/rateLimiters';
 
 // Mockujemy moduły
 vi.mock('../../db', () => import('./mocks/db'));

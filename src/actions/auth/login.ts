@@ -3,10 +3,9 @@ import { z } from 'astro:schema';
 import { db } from '../../db';
 import { usersTable } from '../../db/schema';
 import { verify } from '@node-rs/argon2';
-import { createSession, setSessionCookie } from '../../lib/session';
+import { createSession, setSessionCookie, generateSessionToken } from '../../lib/auth/session';
 import { eq } from 'drizzle-orm';
-import { generateSessionToken } from '../../lib/session';
-import { loginRateLimiter } from '../../lib/rateLimiters';
+import { loginRateLimiter } from '../../lib/auth/rateLimiters';
 
 export const login = defineAction({
   accept: 'form',
