@@ -70,7 +70,7 @@ export async function createSession(
     };
     await db.insert(sessionsTable).values(session);
     return session;
-  } catch (error) {
+  } catch {
     // Network/DB error
     throw new Error('Failed to create session. Please try again later.');
   }
